@@ -975,11 +975,11 @@ d3.layout.phylotree = function (container) {
                    .call (draw_scale_bar);
           scale_bar.selectAll ("text")
                    .style ("text-anchor", "end");
-      }    
+      }   else {
+        svg.selectAll ("." + css_classes["tree-scale-bar"]).remove();
+      }
       
 
-      
-      
       var drawn_links = enclosure.selectAll(d3_phylotree_edge_css_selectors(css_classes))
             .data(links.filter (d3_phylotree_edge_visible), function (d) {return d.target.id || (d.target.id = ++node_id);});
             
