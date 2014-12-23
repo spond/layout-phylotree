@@ -32,7 +32,8 @@ var dram_minimum_score = 31;
 var show_dram_tab    = false;
 var compiled_dram_info = [];
 var dram_extractor_list = null;
-var table_headers;
+var summary_table_headers;
+var summary_table_annotations;
 var additional_filtering_callback = null;
 var intrahost_column_names = null;
 var dram_column_names;
@@ -160,6 +161,8 @@ function draw_intrahost_table (the_data) {
     
     var local_data = rows.data();
 
+
+
     rows.selectAll ("td").data (function (d) { return d;}).enter().
         append ('td').
         style ("opacity", function (d, i, j) {
@@ -221,28 +224,9 @@ function draw_intrahost_table (the_data) {
                                             });
                                         }
                                     }
-                                                /*.on('click', function (d) {
-                                                    if ("data" in d ) {
-                                                       if (d['data'].length > 0) {
-                                                           if (d['data'].length == 1) {
-                                                                render_histogram (d['data'][0][2], [900,300], 'compartment_plot_div', ['TN93 distance', 'Count'], d["label"]);
-                                                                d3.select ("#intrahost_table_div").style ("height", "400px").style("overflow", "scroll");
-                                                                toggle_view ("compartment_plot_div", view_intrahost_list);
-                                                           }
-                                                           
-                                                       } 
-                                                       return false;                                              
-                                                    } else {
-                                                        if ("action" in d) {
-                                                            return d["action"] (d, d["label"]);
-                                                        }
-                                                    }
-                                                    return false;
-                                                })*/
                                     annotation_button.append ("span")
                                                      .attr ("class", 'glyphicon glyphicon-signal');
-                                    }
-                                //}
+                                }
                             } else {
                                 this_obj.html(d);
                             }
@@ -298,7 +282,7 @@ function recurse_json (json, accumulator, record, current_depth, max_depth, last
         for (var c in intrahost_table_key_map) {
             var mapper = intrahost_table_key_map[c];
             var dp = json [mapper[0]]; 
-            if (dp) {
+            if (dp != null) {
                 new_record.push (dp * mapper[1]);
                 if (mapper.length == 3 && typeof mapper[2] === 'object') {
                     if (mapper[2]['ref'] in json) {
@@ -369,9 +353,9 @@ function make_intrahost_table (json, compartments, replicates) {
     
     var sortable_columns = 4 + (compartments?1:0) + (replicates && use_replicate_for_intrahost?1:0);
     
-    recurse_json (json, intrahost_data, [], 1, sortable_columns);
     
-        
+    recurse_json (json, intrahost_data, [], 1, sortable_columns);
+           
     intrahost_data.sort (function (a,b) { 
         for (var k = 0; k < sortable_columns; k++) {
             if (a[k] < b[k]) {
@@ -507,7 +491,7 @@ function make_intrahost_table (json, compartments, replicates) {
         //console.log (intrahost_data[r].length, intrahost_table_columns.length);
         
     }
-    
+        
     draw_intrahost_table (intrahost_data);
     
 }
@@ -611,6 +595,37 @@ function  numericDRAM (d) {
     return d;
 }
 
+function show_summary_popup_text (k, v) {
+    if (typeof v == "string" || typeof v == "number") {
+        return "<li><strong>" + k + "</strong> " + v + "</li>";
+    }
+    if (typeof v == "object") {
+        var my_list = [];
+        var ordered_keys = d3.keys(v);
+        ordered_keys.sort();
+        ordered_keys.forEach (function (d) {
+            my_list.push (show_summary_popup_text (d, v[d]));
+        });
+        return ((k ? ("<li><strong>" + k + "</strong></li>") : "")) + "<ul>" + my_list.join ("\n") + "</ul>";
+    }
+}
+
+function show_summary_popup (d) {
+    var jq_obj = $(this);
+    
+     
+    if (popover_obj) {
+        $(popover_obj).popover ('destroy');
+        if (this == popover_obj) {
+            popover_obj = null;
+            return;
+        }
+    }
+    jq_obj.popover({animation : false, placement: "bottom", title: "Run metrics", html: true, content: show_summary_popup_text (null, d["pop-up"]), trigger : "click"});
+    jq_obj.popover('show');
+    popover_obj = this;
+}
+
 function main_loader (dir_info) {
     d3.json (dir_info, function (error, json) {
         available_run_data = json;
@@ -631,7 +646,9 @@ function main_loader (dir_info) {
             }
         }
         
-        table_headers = json['columns'];        
+        summary_table_headers = json['columns'];    
+        summary_table_annotations = 'annotations' in json ? json  ['annotations'] : summary_table_headers;
+        
         //make_summary_table (json);
         
           
@@ -649,14 +666,14 @@ function main_loader (dir_info) {
                 try {
                     var threshold = parseFloat ($('#dram_freq_summary').val());
                     additional_filtering_callback = function (d) {
-                        return d[5].some (function (m) { return m[2] * 100 >= threshold; });
+                        return d[4 + (has_replicate ? 1 : 0) + (has_compartment ? 1 :0 )].some (function (m) { return m[2] * 100 >= threshold; });
                     }
                     function_for_global_filter (data_for_global_filter);
                     additional_filtering_callback = null;
                     
                 }
                 catch (e) {
-                   
+                   console.log (e);
                 }
             });
         }
@@ -751,13 +768,13 @@ function loadIndividualDRAM (load_list) {
                         return a[0] - b[0];
                     });
                     render_dram_table ('dram_table_body', compiled_dram_info);
-                    var headers = ['Site', table_headers[0], table_headers[1]];
+                    var headers = ['Site', summary_table_headers[0], summary_table_headers[1]];
                     i = 3;
                     if (has_compartment) {
-                        headers.push (table_headers[i++]);
+                        headers.push (summary_table_headers[i++]);
                     }
                     if (has_replicate) {
-                        headers.push (table_headers[i++]);                
+                        headers.push (summary_table_headers[i++]);                
                     }
                     headers.push ("Coverage");
                     headers.push ("DRAMs");
@@ -861,14 +878,20 @@ function has_dram_relevant_genes (gene) {
 }
 
 function make_summary_table (json) {
-    var col_count = json['columns'].length;
-    var rows = d3.select ("#summary_table_head").selectAll ("tr").data([ json['columns']]);
+    
+    var col_count = summary_table_headers.length;
+    var rows = d3.select ("#summary_table_head").selectAll ("tr").data([ summary_table_headers ]);
     rows.enter().append ('tr');
     rows.exit().remove();
-    var cols = rows.selectAll ("td").data (function (d) {return d; });
+    var cols = rows.selectAll ("td").data (function (d) { return d; });
     cols.enter().append ('td');
     cols.exit().remove();
-    cols.text (function(d) {return d; });
+    var cols = cols.selectAll ("abbr").data (function (d, i) {return [{"name": d, "annotation" : summary_table_annotations[i]}]});
+    cols.enter ().append ("abbr");
+    cols.exit().remove();
+    
+    cols.text (function(d) {return d.name; }).attr ("title", function (d) {return d.annotation;});
+    
         
     
     rows = d3.select ("#summary_table_body").selectAll ("tr").data(json["data"].filter (global_summary_filter), function (d) {return d[col_count-1];} );
@@ -877,15 +900,43 @@ function make_summary_table (json) {
     d3.select ("#summary_matching").text (rows[0].length);
 
 
-    rows.selectAll ("td").data (function (d) { return d;}).enter().
-        append ('td').html (function (d,i) { 
+    rows.selectAll ("td").data (function (d) {return d;}).enter().
+        append ('td').each (function (d,i) { 
+            var this_obj = d3.select (this);
             if (i < col_count-1) {
-                if (d == null) return 'N/A'; 
-                if (typeof d == "number") return compact_format (d); 
-                if (typeof d == "boolean") return d ? "Yes" : "No";
-                return d;
+                if (d == null) {this_obj.text('N/A'); return }; 
+                if (typeof d == "number") {this_obj.text(compact_format (d)); return; } 
+                if (typeof d == "boolean") {this_obj.text (d ? "Yes" : "No"); return; }
+                if (typeof d == "string") {this_obj.text (d); return; }
+                if (typeof d == "object") {
+                    if ('text' in d) {
+                        if (typeof d["text"] == "object") {
+                            this_obj.append ("span").html (d["text"].join("<br>"));
+                        } else {
+                            this_obj.append ("span").text(d["text"]);
+                        }                    
+                    }
+                    if ('link' in d) {
+                        var dl_button = this_obj.insert ("a",":first-child").attr ("class", "btn btn-primary btn-xs").style('display', 'inline-block').style ('margin-right', '0.2em')
+                                        .attr ("href", d['link']).attr ("download", 'target' in d ? d['target'] : 'region.fas')
+                                        .attr ("target", "_blank");
+                        
+                        
+                        dl_button.append ("span").attr ("class", "glyphicon glyphicon-download");
+                    } else {
+                        if ('pop-up' in d) {
+                            var dl_button = this_obj.insert ("a",":first-child").attr ("class", "btn btn-primary btn-xs").style('display', 'inline-block').style ('margin-right', '0.2em')
+                                            .attr ("href", '#')
+                                            .on ("click", show_summary_popup);
+                        
+                        
+                            dl_button.insert ("span").attr ("class", "glyphicon glyphicon-list-alt");                    
+                        }
+                    }
+                }   
+                
             } else {
-                return '<button type="button" class="btn btn-primary btn-xs">Display</button>';
+                this_obj.html ('<button type="button" class="btn btn-primary btn-xs">Display</button>');
             }
             }).
         attr ("class", function (d,i) { if (i == col_count - 1) {return "view-analysis";} return "";});
@@ -1057,18 +1108,24 @@ function handle_summary_json (info) {
     
     mapper = {"summary_region_spanned" :  3+offset,
               "summary_coverage": 4+offset,
-              "summary_tn93": 5+offset,
-              "summary_S": 6+offset,
-              "summary_NS": 7+offset,
+              "summary_read_count": 5+offset,
+              "summary_tn93": 6+offset,
+              "summary_S": 7+offset,
+              "summary_NS": 8+offset,
                };
               
     for (key in mapper) { 
         vals = info[mapper[key]];
-        if (typeof vals == "number") {
-            vals = compact_format (vals);
+        if (!vals) {
+            vals = "N/A";
         } else {
-            if (vals == null) {
-                vals = "N/A";
+            if (typeof vals == "number") {
+                vals = compact_format (vals);
+            } else {
+                if (typeof vals == "object") {
+                    vals = "text" in vals ? vals["text"] : vals;
+                }
+            
             }
         }
         d3.select ("#" + key).text (vals);

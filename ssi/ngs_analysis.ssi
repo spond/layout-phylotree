@@ -159,6 +159,10 @@
                             Median coverage (per aa position)
                           </li>
                           <li class="list-group-item">
+                            <span class="badge" id = "summary_read_count">0</span>
+                            Read (unique 'clone') count
+                          </li>
+                          <li class="list-group-item">
                             <span class="badge" id = "summary_tn93">0</span>
                             Mean nucleotide diversity, % 
                           </li>
