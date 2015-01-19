@@ -72,6 +72,7 @@
             <li><a href="#" id = "example_influenza_color">Unscaled IAV HA colored by host</a></li>
             <li><a href="#" id = "example_NGS" >NGS copy diversity</a></li>
             <li><a href="#" id = "example_GVZ" >Compare NGS consensus</a></li>
+            <li><a href="#" id = "example_graft" >Example graft node</a></li>
           </ul>
         </li>
      </ul>
@@ -401,6 +402,22 @@ $("#example_hiv_scaled").on ("click", function (e) {
     var res = d3_phylotree_newick_parser ( hiv_tree );
     default_tree_settings ();
     tree (res).svg (svg).layout();
+});
+
+$("#example_graft").on ("click", function (e) {
+    var editable_tree = "(('graft enabled':0.1,'graft disabled':0.3) : 0.05,('graft disabled':0.1, 'graft enabled': 0.25):0.1)";
+    var res = d3_phylotree_newick_parser ( editable_tree );
+    default_tree_settings ();
+    tree (res);
+    tree.get_nodes().forEach (function (node) {
+        if (node.name.indexOf ('enabled') > 0 || "children" in node) {
+            d3_add_custom_menu (node, 
+                                function (d) {return "Graft a node";},
+                                function (d) {return tree.graft_a_node (node, "new", "split", ["0.01","0.01","0.01"]).update (true);},
+                                null);
+        }
+    });
+    tree.svg (svg).layout();
 });
 
 $("#example_influenza_color").on ("click", function (e) {
