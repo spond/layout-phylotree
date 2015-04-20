@@ -28,7 +28,7 @@ var use_replicate_for_intrahost = true;
 var fst_data         = null;
 var view_intrahost_list = ['bubble_plot_div', 'compartment_plot_div', 'tn93_histogram_div'];
 
-var dram_minimum_score = 31;
+var dram_minimum_score = 1;
 var show_dram_tab    = false;
 var compiled_dram_info = [];
 var dram_extractor_list = null;
@@ -1430,7 +1430,7 @@ function render_histogram (json, dim, id, labels, patient_info, show_table) {
         
         for (k = 0; k < counts.length; k++) {
         
-            var bar = histogram_svg.selectAll(".bar ." + hist_labels[k])
+            var bar = histogram_svg.selectAll(".bar." + hist_labels[k])
                 .data(counts[k])
                 .enter().append("g")
                 .attr("class", "bar " + hist_labels[k])
@@ -1443,8 +1443,9 @@ function render_histogram (json, dim, id, labels, patient_info, show_table) {
                 .append ("title").text (function (d,i) { return "" + d[1] + " distances between " + (d[0]-step) + " and " + d[0];});
                 
             if (fst_plot) {
-                bar.selectAll("rect").style ("fill-opacity", "0.2", true)
-                   .style ("fill", colors(k), true);
+                console.log (bar);
+                bar.selectAll("rect").style ("fill-opacity", "0.2")
+                   .style ("fill", colors(k));
             }
 
             var line = d3.svg.line()
@@ -1455,7 +1456,7 @@ function render_histogram (json, dim, id, labels, patient_info, show_table) {
             histogram_svg.append("path")
                           .datum(counts[k])
                           .attr ("class", "line-hist")
-                          .style("stroke", fst_plot?colors(k):"#000", true)
+                          .style("stroke", fst_plot?colors(k):"#000")
                           .attr("d", line);
 
         }
@@ -1980,6 +1981,7 @@ function plot_div_data (data, keys, labels, id, dim) {
         .orient("left");
 
     divergence_data.sort (function (a,b) {if (a[0] < b[0]) return -1; if (a[0] > b[0]) return 1; return 0;});
+    
     
             
     x.domain(d3.extent(divergence_data, function(d,i) { return d[0]; }));
