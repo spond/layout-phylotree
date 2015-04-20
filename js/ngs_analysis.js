@@ -1443,7 +1443,6 @@ function render_histogram (json, dim, id, labels, patient_info, show_table) {
                 .append ("title").text (function (d,i) { return "" + d[1] + " distances between " + (d[0]-step) + " and " + d[0];});
                 
             if (fst_plot) {
-                console.log (bar);
                 bar.selectAll("rect").style ("fill-opacity", "0.2")
                    .style ("fill", colors(k));
             }
