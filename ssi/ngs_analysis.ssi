@@ -104,10 +104,6 @@
         <svg id = 'bubble_plot' width = '1px' height = '1px'/>
     </div>
 
-    <div class = 'row' style = 'display: none' id = 'compartment_plot_div'>
-        <button type="button" class="close" aria-hidden="true" id = 'close_compartment_plot'>&times;</button>
-    </div>
-                        
     <div class = 'row' style = 'display: none' id = 'tn93_histogram_div'>
         <button type="button" class="close" aria-hidden="true" id = 'close_tn93_histogram'>&times;</button>
     </div>
@@ -125,6 +121,31 @@
         </div>
     </div>
 </div>
+
+<div class = 'container' id = 'compartmentalization_table' style = 'display: none'>
+
+    <div class="alert alert-info alert-dismissible" role="alert">
+      <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+      Compartmentalization plots use the following display conventions. <br>
+      <strong>Shape</strong>: circle (F<sub>ST</sub> &ge; 0), cross (F<sub>ST</sub> &lt; 0) <br>
+      <strong>Color</strong>: blue (high p-value), red (low p-value) <br>
+      <strong>Opacity</strong>: transparent (p &gt; 0.05), solid (p &lt; 0.05) <br>
+    </div>
+
+    <div class = 'row' style = 'display: none' id = 'compartment_plot_div'>
+        <button type="button" class="close" aria-hidden="true" id = 'close_compartment_plot'>&times;</button>
+    </div>
+                        
+     <div class = 'row' id = 'compartmentalization_table_div'>
+        <div class = 'col-md-12'>
+            <table class = 'table table-striped table-hover'>
+                <tbody id = 'compartmentalization_table_body'> 
+                </tbody>
+            </table>     
+        </div>
+    </div>
+</div>
+
 
 <div class = 'container' id = 'allofit' style = 'display: none'>
    <p class="lead" id = 'header'>

@@ -11,6 +11,7 @@ var rendered_tree_title;
 var colors      = d3.scale.category10();
 var color_rates = d3.interpolateRgb ("#AAAAAA","#000000");
 var color_dram  = d3.interpolateRgb ("#FFB6B6","#FF0000");
+var color_pvalue = d3.interpolateRgb ("#FF0000","#0000FF");
 var number_format = d3.format(".2g"),
     compact_format = d3.format (".2f"),
     percentage_format = d3.format (".4g");
@@ -21,7 +22,7 @@ var parse_date = d3.time.format("%Y/%m/%d");
 
 var data_for_global_filter;
 var function_for_global_filter;
-var view_toggle_list = ['summary_table','intrahost_table','allofit','dram_summary_table'];
+var view_toggle_list = ['summary_table','intrahost_table','allofit','dram_summary_table','compartmentalization_table'];
 var has_compartment = false;
 var has_replicate   = false;
 var use_replicate_for_intrahost = true;
@@ -31,6 +32,7 @@ var view_intrahost_list = ['bubble_plot_div', 'compartment_plot_div', 'tn93_hist
 var dram_minimum_score = 1;
 var show_dram_tab    = false;
 var compiled_dram_info = [];
+var compartment_table = [];
 var dram_extractor_list = null;
 var summary_table_headers;
 var summary_table_annotations;
@@ -135,9 +137,9 @@ function load_analysis_results (dir_info, document_title, ignore_replicate_for_i
         use_replicate_for_intrahost = false;
     }
     
-    loadDRM ([['/js/DRM/Scores_PI.txt', 'PR', 'PI'],
-          ['/js/DRM/Scores_NRTI.txt', 'RT', 'NRTI'],
-          ['/js/DRM/Scores_NNRTI.txt', 'RT', 'NNRTI']], dir_info);
+    loadDRM ([['/layout-phylotree/js/DRM/Scores_PI.txt', 'PR', 'PI'],
+          ['/layout-phylotree/js/DRM/Scores_NRTI.txt', 'RT', 'NRTI'],
+          ['/layout-phylotree/js/DRM/Scores_NNRTI.txt', 'RT', 'NNRTI']], dir_info);
 }
 
 function diff_host_gene (r1, r2, cols) {
@@ -148,6 +150,48 @@ function diff_host_gene (r1, r2, cols) {
         }
     }
     return false;
+}
+
+function render_compartment_table (the_data) {
+    d3.select ("#compartmentalization_table_body").selectAll ("tr").remove();
+    var rows = d3.select ("#compartmentalization_table_body").selectAll ("tr").data(the_data.filter (global_summary_filter), 
+        function (d) {return d;} 
+    );
+    rows.enter().append('tr');
+    rows.exit().remove();
+    d3.select ("#summary_matching").text (rows[0].length);
+    rows.selectAll ("td").data (function (d) { return d;}).enter().
+        append ('td').
+        each (function (id_data) {
+            var table_cell = d3.select (this);
+            if (_.isString (id_data)) {
+                table_cell.text (id_data);
+            } else { // object
+                paired_comparisons = [];
+                
+                id_data.compartments.forEach (function (c,i) {
+                    id_data.compartments.forEach (function (c2,i2) {
+                        if (i2 > i) {
+                            paired_comparisons.push ([
+                                c,
+                                c2,
+                                id_data.comparison.filter (function (row) {
+                                    return row[0] == c && row[1] == c2;
+                                })
+                            ]);   
+                        }
+                    })
+                });
+
+                var charts = table_cell.selectAll ("svg").data (paired_comparisons);
+                charts.enter ().append ("svg");
+                charts.exit().remove();
+                charts.attr ("width", "300").attr ("height", "200").each (function (data) {
+                    render_fst (data, this, [300,200],16);
+                });
+               
+            }
+        });
 }
 
 function draw_intrahost_table (the_data) {
@@ -396,8 +440,14 @@ function make_intrahost_table (json, compartments, replicates) {
             }
         }
         
-         if (fst_data) {
+         if (0 && fst_data) {
             var my_fst = check_compartmentalization (intrahost_data [r][0], intrahost_data [r][sortable_columns - 2], intrahost_data [r][1], intrahost_data [r][2]);
+            
+            if (r == 0) {
+                console.log (fst_data [intrahost_data [r][0]][intrahost_data [r][sortable_columns - 2]][intrahost_data [r][1]]);
+            }
+            continue;
+            
             if (my_fst && my_fst.length) {               
                
                if (my_fst[0][2] && ! ('p' in my_fst[0][2])) {
@@ -479,21 +529,97 @@ function make_intrahost_table (json, compartments, replicates) {
                
                  
             }
-            else {
-                /*if (my_fst) {
-                   console.log (intrahost_data [r][0], intrahost_data [r][1], intrahost_data [r][2], 
-                   fst_data[intrahost_data [r][0]][intrahost_data [r][sortable_columns - 2]][intrahost_data [r][1]]);
-                
-                }*/
+            if (r == 0) {
+                console.log (intrahost_data [r], my_fst);
             }
-            intrahost_data[r].splice (intrahost_data[r].length-1, 0, my_fst);
+            //intrahost_data[r].splice (intrahost_data[r].length-1, 0, my_fst);
         }
+        
         //console.log (intrahost_data[r].length, intrahost_table_columns.length);
         
     }
         
+    if (fst_data) {
+        /* 
+          IN:
+            id 
+            date
+             gene 
+              array 
+                [replicate, replicate, {
+                                            "comp1",
+                                            "comp2",
+                                            "Between",
+                                            "f_st",
+                                            "p"
+                                        }
+                ]
+        */
+        
+        /* OUT:
+            id: {
+                    compartments: [comp1, comp2, ...]
+                    dates:        [date1, date2, ...]
+                    genes:        [gene1, gene2, ...]
+                    comparisons:  [comp1, comp2, date, gene, f_st, p, replicate1, replicate2, histogram_data (object with 3 arrays)]
+                }
+            
+        */
+        
+        rebinned = {};
+        
+        _.each (fst_data, function (id_level, id) {
+            rebinned [id] = {compartments : {},
+                             dates: {},
+                             genes: {},
+                             comparison : []};
+            _.each (id_level, function (date_level, date) {
+                rebinned[id].dates[date] = true;
+                _.each (date_level, function (gene_level, gene) {
+                    rebinned[id].genes[gene] = true;
+                    _.each (gene_level, function (fst_level) {
+                        compartment_keys = _.difference (_.keys (fst_level[2]), ["Between", "f_st", "p"]);
+                        if (compartment_keys.length == 2) {
+                            if (compartment_keys[0] <  compartment_keys[1]) {
+                                c1 =  compartment_keys[0];
+                                c2 =  compartment_keys[1];
+                            } else {
+                                c1 =  compartment_keys[1];
+                                c2 =  compartment_keys[0];
+                            }
+                            rebinned[id].compartments[c1] = true;
+                            rebinned[id].compartments[c2] = true;
+                            
+                            hist = {"Between" : fst_level[2]["Between"],
+                                                                "f_st" : fst_level[2]["f_st"],
+                                                                "p" : fst_level[2]["p"],
+                                                                "id" : id
+                            };
+                            hist[c1] = fst_level[2][c1];
+                            hist[c2] = fst_level[2][c2];
+                            
+                            rebinned[id].comparison.push ([c1,c2,date,gene,
+                                                           fst_level[2]["f_st"],fst_level[2]["p"],
+                                                           replicates ? fst_level[0] : null,
+                                                           replicates ? fst_level[1] : null,
+                                                           hist
+                                                           ]);
+                      }  
+                    })
+                })
+            })
+        });
+        
+        _.each (rebinned, function (value, key) {
+            ["compartments", "genes", "dates"].forEach (function (array_key) {
+                value[array_key] = _.sortBy (_.keys(value[array_key]), function (d) {return d;});
+            });
+        });                
+        compartment_table = _.pairs(rebinned);
+        
+       
+    }    
     draw_intrahost_table (intrahost_data);
-    
 }
 
 
@@ -544,11 +670,16 @@ function set_button_handlers  () {
         d3.select ("#intrahost_table_div").style ("height", null).style("overflow", null);
 
     });
+    
+    function toggle_tab_highlight (id) {
+        ["#view_individual_runs", "#view_intrahost", "#view_dram_table", "#view_compartmentalization_table"].forEach (
+            function (d) {
+                d3.select (d).attr ("class", d == id ? "alert-info": null);
+            });
+    }
         
     $('#view_individual_runs').on ('click', function (event) {
-        d3.select ("#view_intrahost").attr("class", null);
-        d3.select ("#view_dram_table").attr("class", null);
-        d3.select ("#view_individual_runs").attr ("class",'alert-info');
+        toggle_tab_highlight ("#view_individual_runs");
         data_for_global_filter = available_run_data;
         function_for_global_filter = make_summary_table;
         function_for_global_filter (data_for_global_filter);
@@ -556,9 +687,7 @@ function set_button_handlers  () {
     });
 
     $('#view_intrahost').on ('click', function (event) {
-        d3.select ("#view_individual_runs").attr("class", null);
-        d3.select ("#view_intrahost").attr ("class",'alert-info');
-        d3.select ("#view_dram_table").attr("class", null);
+        toggle_tab_highlight ("#view_intrahost");
         function_for_global_filter = draw_intrahost_table;
         data_for_global_filter = intrahost_data;
         function_for_global_filter (data_for_global_filter);
@@ -566,20 +695,27 @@ function set_button_handlers  () {
     });
     
     $('#view_dram_table').on ('click', function (event) {
-        d3.select ("#view_individual_runs").attr("class", null);
-        d3.select ("#view_intrahost").attr ("class",null);
-        d3.select ("#view_dram_table").attr("class", 'alert-info');
-        toggle_view ("dram_summary_table");
+        toggle_tab_highlight ("#view_dram_table");
         function_for_global_filter = render_dram_table_wrapper;
         data_for_global_filter = compiled_dram_info;
         function_for_global_filter (data_for_global_filter);
+        toggle_view ("dram_summary_table");
+    });
+
+    $('#view_compartmentalization_table').on ('click', function (event) {
+        toggle_tab_highlight ("#view_compartmentalization_table");
+        function_for_global_filter = render_compartment_table;
+        data_for_global_filter = compartment_table;
+        function_for_global_filter (data_for_global_filter);
+        toggle_view ("compartmentalization_table");
     });
     
        
-    $( '#summary_limiter' ).on('input propertychange', function(event) {
-        global_filter_value = $(this).val().split (" ");
+    $( '#summary_limiter' ).on('input propertychange', _.throttle (function(event) {
+        global_filter_value = $(event.target).val().split (" ");
         function_for_global_filter (data_for_global_filter);
-    });
+    }, 250)
+    );
 }
 
 
@@ -659,7 +795,10 @@ function main_loader (dir_info) {
             d3.select ("#dram_info_tab").append ("li")
                                         .append ("a")
                                         .attr ('id', 'view_dram_table')
+                                        .attr ('href', '#')
                                         .text ('DRAM summary');
+                                        
+            //console.log (dram_extractor_list, dram_info_from);
             
             loadIndividualDRAM (dram_info_from);
             d3.select ("#dram_button_summary").on ("click", function (e) {
@@ -678,7 +817,6 @@ function main_loader (dir_info) {
             });
         }
         
-        set_button_handlers ();
         fst_data = json['F_ST'];
         
         if (has_replicate && use_replicate_for_intrahost) {
@@ -687,17 +825,27 @@ function main_loader (dir_info) {
         if (has_compartment) {
             intrahost_table_columns.splice (2,0,"Compartment");
         }
-        if (fst_data) {
+        /*if (fst_data) {
             intrahost_table_columns.splice (intrahost_table_columns.length-1, 0, "Compartmentalization");
-        }
+        }*/
         
         if ("intrahost" in json) {
             make_intrahost_table (json['intrahost'], has_compartment, has_replicate);
         }  else {
             make_intrahost_table (null);
         }
+        
+        if (fst_data) {
+            d3.select ("#dram_info_tab").append ("li")
+                            .append ("a")
+                            .attr ('id', 'view_compartmentalization_table')
+                            .attr ('href', '#')
+                            .text ('Compartmentalization');
+        }
+        
         function_for_global_filter = draw_intrahost_table;
         data_for_global_filter = intrahost_data;
+        set_button_handlers ();
         $("#loading_bar").hide(0);
         $("#nav_bar").show (0);
     });
@@ -1197,6 +1345,138 @@ function clean_existing (id, set_loading) {
 
 }
 
+function render_fst (data, svg, dim, sybmol_size ) {
+    svg = d3.select (svg);
+    sybmol_size = sybmol_size || 8;
+    
+    var margin = {top: sybmol_size + 12, right: 2*sybmol_size, bottom: 2*sybmol_size + 30, left: 2*sybmol_size+20},
+    width  = dim[0] - margin.left - margin.right,
+    height = dim[1] - margin.top - margin.bottom;
+    
+    svg.selectAll("path").remove();
+    svg.selectAll("g").remove();    
+ 
+    var x, valid_dates = true;
+    
+    dates = data[2].map (function (row) {d = parse_date.parse(row[2]); if (!d) {valid_dates = false}; return d;});
+    
+    if (valid_dates) {
+        x = d3.time.scale()
+        .rangeRound([0, width]);
+        x.domain(d3.extent (dates));
+    } else {
+        dates = data.map (function (row) {return row[2];});
+        x = d3.scale.ordinal()
+        .rangePoints([0, width], 0.5);
+        x.domain (_.unique (data[2].map (function(d) { return d[2]; })),false);
+    }
+
+    var y = d3.scale.ordinal()
+        .rangePoints([height, 0], 0.5);
+
+    y.domain(_.sortBy(data[2].map (function(d) { return d[3]; },d3.ascending)));
+       
+    var circles = []; 
+    
+        
+    data[2].forEach (function (fst) {
+        circles.push ({gene: fst[3], 
+                      date: valid_dates ? parse_date.parse (fst[2]) : fst[2], 
+                      fst: fst[4], 
+                      p : fst[5], 
+                      replicate1 : +fst[6],
+                      replicate2 : +fst[7],
+                      hist: fst [8]});
+    });
+    
+    function size (fst) {
+        fst = fst > 0 ? fst : -fst;
+        fst = fst > 1 ? 1 : fst;
+        fst = fst < 0.2 ? 0.2 : fst;
+        return sybmol_size*sybmol_size*fst;
+    }
+    
+    // figure title
+    svg.append ("text").attr ("transform", "translate (" + (margin.left + width/2) + "," + margin.top/2 + ")")
+                       .style ("text-anchor", "middle")
+                       .text (data[0] + " vs " + data[1]);
+                       
+    var count_by_gene_date = []; // deal with replicates
+    
+    var viz = svg.append ("g").attr ("transform", "translate (" + margin.left + "," + margin.top + ")");
+    viz.selectAll("path")
+            .data(circles)
+            .enter().append("path")
+             .attr("transform", function(d) { 
+                
+                var already_did_gene_date = _.findWhere (count_by_gene_date, {'gene' : d.gene, 'date': parse_date(d.date)});
+                
+                if (already_did_gene_date) {
+                    already_did_gene_date.count +=1;
+                } else {
+                    already_did_gene_date = {gene : d.gene, date: parse_date(d.date), count : 1};
+                    count_by_gene_date.push (already_did_gene_date);
+                }
+                
+                //console.log (count_by_gene_date);
+                
+                return "translate(" + ( x(d.date) +
+                    (already_did_gene_date.count-1) * sybmol_size)
+                     + "," + y(d.gene)  + ")"; 
+             })
+            .attr("d", function (d) {
+                return d3.svg.symbol().type (d.fst > 0 ? "circle" : "cross").size (size(d.fst))();
+            }).
+            style ("fill", function (d) {
+                return color_pvalue (d.p);
+            }).
+            style ("opacity", function (d) { return d.p <= 0.05 ? "1.0" : "0.25";}).
+            on ("click", function (d) {
+                    render_histogram (d.hist, [900,300], 'compartment_plot_div', ['TN93 distance', 'Pairs'], 
+                    "Patient " + d.hist.id + " sampled on " + parse_date (d.date) + " from " + d.gene + 
+                    (has_replicate ? " replicates " + d.replicate1 + "/" + d.replicate2 : "") + ". "
+                    );
+                    d3.select ("#intrahost_table_div").style ("height", "400px").style("overflow", "scroll");
+                    toggle_view ("compartment_plot_div", view_intrahost_list);
+                        return false;
+            }).
+            append ("title").text (function (d) {
+                return "Fst = " + number_format(d.fst) + ", p = " + compact_format (d.p);
+            });
+
+    var xAxis = d3.svg.axis()
+        .scale(x)
+        .tickValues (dates)
+        .tickFormat (parse_date)
+        .orient("bottom");
+
+    var yAxis = d3.svg.axis()
+        .scale(y)
+        .orient("left");
+        
+    var x_axis = viz.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis);
+    
+    x_axis.selectAll ("text").attr ("transform", "rotate (30)").
+            attr ("dx", "3em").
+            style ("font-size", "6px");
+
+    viz.append("g")
+      .attr("class", "y axis")
+      .call(yAxis);
+      /*.append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 6)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("gene");*/
+    
+   
+}
+
+
 function render_diversity (json, dim, id, class_id, index, label) {
     var diversity_svg;
     
@@ -1319,13 +1599,14 @@ function render_histogram (json, dim, id, labels, patient_info, show_table) {
             for (k in json) {
                 if (Array.isArray(json[k])) {
                     hist_labels.push (k);
-                    counts.push (json[k]);
+                    counts.push (json[k].map (function (d) {return [d[0], d[1] < 1e12 ? d[1] : 0];}));
                 }
             }
             fst_plot = true;
             
 
         }
+        
         
         var margin = {top: 20, right: 20, bottom: 40, left: 50},
                 width = dim[0] - margin.left - margin.right,
