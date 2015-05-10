@@ -159,6 +159,12 @@ function render_compartment_table (the_data) {
     );
     rows.enter().append('tr');
     rows.exit().remove();
+    
+    var csv_table_headers = ['ID','date','gene','Compartment 1', 'Compartment 2','Replicate 1', 'Replicate 2','F_st','p'];
+    var csv_table_data    = [];
+    var current_id;
+    
+    
     d3.select ("#summary_matching").text (rows[0].length);
     rows.selectAll ("td").data (function (d) { return d;}).enter().
         append ('td').
@@ -166,9 +172,13 @@ function render_compartment_table (the_data) {
             var table_cell = d3.select (this);
             if (_.isString (id_data)) {
                 table_cell.text (id_data);
+                current_id = id_data;
             } else { // object
                 paired_comparisons = [];
                 
+                id_data.comparison.forEach (function (d,i,array){
+                    csv_table_data.push ([current_id, d[2], d[3], d[0], d[1], d[6], d [7], d [4], d[5]]);
+                });
                 id_data.compartments.forEach (function (c,i) {
                     id_data.compartments.forEach (function (c2,i2) {
                         if (i2 > i) {
@@ -192,6 +202,10 @@ function render_compartment_table (the_data) {
                
             }
         });
+        
+        
+    
+    prepare_csv_export ([csv_table_headers, csv_table_data, 'compartments.txt'], true);
 }
 
 function draw_intrahost_table (the_data) {
@@ -1003,17 +1017,21 @@ function extractDRM (classes, drugs, min_score) {
     return filter_sites;
 }
 
-function prepare_csv_export (csv_export_data) {
+function prepare_csv_export (csv_export_data, already_text) {
     if (csv_export_data.length == 3) {
         export_data = [[]];
-        csv_export_data[0].each (function (d,i) {export_data[0].push (d3.select(this).text());});
-        csv_export_data[1].each (function (d,i) {
-            export_data.push ([]);
-            d3.select (this).selectAll ("td").each (function (cell,j) {
-                  export_data[export_data.length-1].push (d3.select (this).text());
+        if (already_text) {
+            export_data[0] = csv_export_data[0];
+            csv_export_data[1].forEach (function (d) {export_data.push (d);});
+        } else {
+            csv_export_data[0].each (function (d,i) {export_data[0].push (d3.select(this).text());});
+            csv_export_data[1].each (function (d,i) {
+                export_data.push ([]);
+                d3.select (this).selectAll ("td").each (function (cell,j) {
+                      export_data[export_data.length-1].push (d3.select (this).text());
+                });
             });
-        });
-        
+        }
         
         d3.select ("#export_current_table")
                     .attr ("href", "data:application/text;charset=utf-8," + encodeURIComponent (export_data.map (function (d) {return d.join ("\t");}).join ("\n")))
