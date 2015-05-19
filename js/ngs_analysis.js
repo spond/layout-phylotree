@@ -137,9 +137,9 @@ function load_analysis_results (dir_info, document_title, ignore_replicate_for_i
         use_replicate_for_intrahost = false;
     }
     
-    loadDRM ([['/layout-phylotree/js/DRM/Scores_PI.txt', 'PR', 'PI'],
-          ['/layout-phylotree/js/DRM/Scores_NRTI.txt', 'RT', 'NRTI'],
-          ['/layout-phylotree/js/DRM/Scores_NNRTI.txt', 'RT', 'NNRTI']], dir_info);
+    loadDRM ([['/js/DRM/Scores_PI.txt', 'PR', 'PI'],
+          ['/js/DRM/Scores_NRTI.txt', 'RT', 'NRTI'],
+          ['/js/DRM/Scores_NNRTI.txt', 'RT', 'NNRTI']], dir_info);
 }
 
 function diff_host_gene (r1, r2, cols) {
@@ -811,9 +811,7 @@ function main_loader (dir_info) {
                                         .attr ('id', 'view_dram_table')
                                         .attr ('href', '#')
                                         .text ('DRAM summary');
-                                        
-            //console.log (dram_extractor_list, dram_info_from);
-            
+                                                    
             loadIndividualDRAM (dram_info_from);
             d3.select ("#dram_button_summary").on ("click", function (e) {
                 try {
@@ -901,7 +899,6 @@ function loadIndividualDRAM (load_list) {
                 if (d2 && d) {
                     
                     var record_info           = directory_to_data[dir[0]].filter (function (d, i) { if (i < 2) { return true}; if (i > 2 && i - 2 <=  has_compartment + has_replicate) return true; return false});
-                    
                     for (k in d) {
                         site_info = site_annotator (k, dir[1]).join ("");
                         if (site_info in dram_extractor_list) {
@@ -1019,23 +1016,25 @@ function extractDRM (classes, drugs, min_score) {
 
 function prepare_csv_export (csv_export_data, already_text) {
     if (csv_export_data.length == 3) {
-        export_data = [[]];
-        if (already_text) {
-            export_data[0] = csv_export_data[0];
-            csv_export_data[1].forEach (function (d) {export_data.push (d);});
-        } else {
-            csv_export_data[0].each (function (d,i) {export_data[0].push (d3.select(this).text());});
-            csv_export_data[1].each (function (d,i) {
-                export_data.push ([]);
-                d3.select (this).selectAll ("td").each (function (cell,j) {
-                      export_data[export_data.length-1].push (d3.select (this).text());
+        if (csv_export_data[0] && csv_export_data[1]) {
+            export_data = [[]];
+            if (already_text) {
+                export_data[0] = csv_export_data[0];
+                csv_export_data[1].forEach (function (d) {export_data.push (d);});
+            } else {
+                csv_export_data[0].each (function (d,i) {export_data[0].push (d3.select(this).text());});
+                csv_export_data[1].each (function (d,i) {
+                    export_data.push ([]);
+                    d3.select (this).selectAll ("td").each (function (cell,j) {
+                          export_data[export_data.length-1].push (d3.select (this).text());
+                    });
                 });
-            });
-        }
+            }
         
-        d3.select ("#export_current_table")
-                    .attr ("href", "data:application/text;charset=utf-8," + encodeURIComponent (export_data.map (function (d) {return d.join ("\t");}).join ("\n")))
-                    .attr ("download", csv_export_data[2]);
+            d3.select ("#export_current_table")
+                        .attr ("href", "data:application/text;charset=utf-8," + encodeURIComponent (export_data.map (function (d) {return d.join ("\t");}).join ("\n")))
+                        .attr ("download", csv_export_data[2]);
+        }
     } 
 }
 
