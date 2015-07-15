@@ -20,7 +20,8 @@ var available_run_data;
 var directory_to_data = {};
 var parse_date = d3.time.format("%Y/%m/%d");
 
-var data_for_global_filter;
+var data_for_global_filter = null;
+var column_names_for_global_filter = null;
 var function_for_global_filter;
 var view_toggle_list = ['summary_table','intrahost_table','allofit','dram_summary_table','compartmentalization_table'];
 var has_compartment = false;
@@ -40,6 +41,7 @@ var additional_filtering_callback = null;
 var intrahost_column_names = null;
 var dram_column_names;
 var unique_file_names = [];
+var visible_run_data = [];
 
 
 
@@ -78,7 +80,8 @@ var intrahost_table_columns = ["PID",
                                "Mean length, aa",
                                "Graphics"];
   
-var global_filter_value   = [];                              
+var global_filter_value   = [];     
+                         
 var global_summary_filter = function (d,i) {           
     if (additional_filtering_callback && ! additional_filtering_callback (d)) {
         return false;
@@ -92,8 +95,11 @@ var global_summary_filter = function (d,i) {
     for (var v = 0; v < global_filter_value.length; v++) {
         matches.push (global_filter_value[v]);
     }
+    
     for (var k = 0; k < d.length && matches.length > 0; k++) {
+        
         var match_me = null;
+        
         if (typeof d[k] == "string") {
             match_me = d[k];
         } else {
@@ -106,14 +112,24 @@ var global_summary_filter = function (d,i) {
                 } else {
                     if (d[k] && typeof d[k] == 'object' && ('text' in d[k])) {
                         match_me = d[k]['text'];
+                    } else {
+                        if (typeof d[k] == "number") {
+                            match_me = "" + d[k];
+                        }
                     }
                 }   
             }
         }
-        if (match_me) {
+        if (match_me !== null) {
             for (v = matches.length-1; v >= 0; v--) {
-                if (match_me.indexOf(matches[v]) >= 0) {
-                    matches.splice (v,1);
+                if (_.isArray (matches[v])) {
+                    if (k == matches[v][0] && matches[v][1] (+match_me)) {
+                        matches.splice (v,1);
+                    }
+                } else {
+                    if (match_me.indexOf(matches[v]) >= 0) {
+                        matches.splice (v,1);
+                    }
                 }
             }   
         } 
@@ -377,7 +393,7 @@ function make_patient_label (row, compartments, replicates, extra) {
 
 function make_patient_label_consensus (row, compartments, replicates) {
     var id = 0;
-    label = row[id++] + "_" + row [id++].replace (/\//g, "") + "_" + row[id++];
+    label = row[id++] + "_" + row [id++].replace (/\//g, "") + "_" + row[id];
     if (compartments) {
         id++;
         label += "_" +row [id++];
@@ -385,7 +401,7 @@ function make_patient_label_consensus (row, compartments, replicates) {
     if (replicates) {
         label += "_" +row [id++];
     }
-     return label;
+    return label + "_consensus";
 }
 
 
@@ -649,7 +665,6 @@ function set_button_handlers  () {
     });
     
     $('#export_consensus_sequences').on ('click', function (event) {
-        var sequences = [];
         
         d3.select ("#export_consensus_sequences_div").remove();
         
@@ -667,7 +682,23 @@ function set_button_handlers  () {
         progress.append ("h5")
                 .text ("Preparing data for export");
                           
-        loadConsensusSequences (unique_file_names.map (function (d) {return d;}), sequences);
+        /*loadConsensusSequences (unique_file_names.map (function (d) {return d;}), sequences);*/
+        
+        var export_sequences = visible_run_data.filter (function (d) {return d[5] && 'consensus' in d[5] && d[5]['consensus'];}).map (function (d) {return [make_patient_label_consensus (d, has_compartment, has_replicate), d[5]['consensus']];}),
+            s_count   = export_sequences.length;
+            
+        export_sequences =  encodeURIComponent(export_sequences.map (function (d) {return ">" + d[0] + "\n" + d[1] + "\n";}).join ("\n"));
+        
+        d3.select ("#export_consensus_sequences_div").select("h5").remove();
+        
+        d3.select ("#export_consensus_sequences_div").append ("a").classed ("btn btn-primary", true)
+                    .text ("Download " + s_count + " consensus sequences as FASTA")
+                    .attr('download', "consensus.txt")
+                    .attr('href', 'data:text/plain;charset=utf-8,' + export_sequences)
+                    .on ("click", function (d) {
+                        d3.select ("#export_consensus_sequences_div").remove();
+                    });
+        
         event.preventDefault();
     });
     
@@ -695,6 +726,7 @@ function set_button_handlers  () {
     $('#view_individual_runs').on ('click', function (event) {
         toggle_tab_highlight ("#view_individual_runs");
         data_for_global_filter = available_run_data;
+        column_names_for_global_filter = summary_table_headers;
         function_for_global_filter = make_summary_table;
         function_for_global_filter (data_for_global_filter);
         toggle_view ("summary_table");
@@ -702,6 +734,7 @@ function set_button_handlers  () {
 
     $('#view_intrahost').on ('click', function (event) {
         toggle_tab_highlight ("#view_intrahost");
+        column_names_for_global_filter = null;
         function_for_global_filter = draw_intrahost_table;
         data_for_global_filter = intrahost_data;
         function_for_global_filter (data_for_global_filter);
@@ -710,6 +743,7 @@ function set_button_handlers  () {
     
     $('#view_dram_table').on ('click', function (event) {
         toggle_tab_highlight ("#view_dram_table");
+        column_names_for_global_filter = null;
         function_for_global_filter = render_dram_table_wrapper;
         data_for_global_filter = compiled_dram_info;
         function_for_global_filter (data_for_global_filter);
@@ -718,6 +752,7 @@ function set_button_handlers  () {
 
     $('#view_compartmentalization_table').on ('click', function (event) {
         toggle_tab_highlight ("#view_compartmentalization_table");
+        column_names_for_global_filter = null;
         function_for_global_filter = render_compartment_table;
         data_for_global_filter = compartment_table;
         function_for_global_filter (data_for_global_filter);
@@ -727,6 +762,27 @@ function set_button_handlers  () {
        
     $( '#summary_limiter' ).on('input propertychange', _.throttle (function(event) {
         global_filter_value = $(event.target).val().split (" ");
+
+        if (column_names_for_global_filter) {
+            var expression_splitter = /^([^><]+)([><])([0-9\.]+)$/;
+
+            for (var v = 0; v < global_filter_value.length; v++) {
+                var iz_column = global_filter_value[v].match (expression_splitter);
+                if (iz_column) {
+                    console.log (iz_column);
+                    for (c = 0; c < column_names_for_global_filter.length; c++) {
+                        if (column_names_for_global_filter[c].indexOf (iz_column[1]) == 0) {
+                            break;
+                        }
+                    }
+                    if (c < column_names_for_global_filter.length) {
+                       var l = +iz_column[3];
+                       global_filter_value [v] = [c, iz_column [2] == '<' ? function (v) {return v < l;} : function (v) {return v > l;}];
+                       continue;
+                    }
+                }   
+            }
+        }
         function_for_global_filter (data_for_global_filter);
     }, 250)
     );
@@ -863,33 +919,6 @@ function main_loader (dir_info) {
     });
 };
 
-function loadConsensusSequences (load_list, store_here) {
-    if (load_list.length) {
-        var dir = load_list.pop ();     
-        return d3.json (dir + '/rates.json', function (e,d) {
-            if (d) {
-                store_here.push ([make_patient_label_consensus (directory_to_data[dir],has_compartment,has_replicate), helper_make_consensus (d["posteriors"])]);
-            }
-        
-            if (load_list.length) {
-                loadConsensusSequences (load_list, store_here);
-            } else {
-                d3.select ("#export_consensus_sequences_div").select("h5").remove();
-                
-                d3.select ("#export_consensus_sequences_div").append ("a")
-                    .attr ("class", "btn btn-primary active")
-                    .attr ("href", "data:application/text;charset=utf-8," + encodeURIComponent (store_here.map (function (d) {return ">" + d[0] + "\n" + d[1];}).join ("\n")))
-                    .attr ("download", "consensus.txt")
-                    .text ("Download FASTA")
-                    .on ("click", function (d) {d3.select ("#export_consensus_sequences_div").remove();});
-                    
-              // <a href="#" class="btn btn-default btn-lg active" role="button">Link</a>  
-                      
-                
-            }
-        });
-    }
-}
 
 function loadIndividualDRAM (load_list) {
     if (load_list.length) {
@@ -1043,7 +1072,7 @@ function has_dram_relevant_genes (gene) {
 }
 
 function make_summary_table (json) {
-    
+        
     var col_count = summary_table_headers.length;
     var rows = d3.select ("#summary_table_head").selectAll ("tr").data([ summary_table_headers ]);
     rows.enter().append ('tr');
@@ -1057,9 +1086,8 @@ function make_summary_table (json) {
     
     cols.text (function(d) {return d.name; }).attr ("title", function (d) {return d.annotation;});
     
-        
-    
-    rows = d3.select ("#summary_table_body").selectAll ("tr").data(json["data"].filter (global_summary_filter), function (d) {return d[col_count-1];} );
+    visible_run_data = json["data"].filter (global_summary_filter);
+    rows = d3.select ("#summary_table_body").selectAll ("tr").data(visible_run_data, function (d) {return d[col_count-1];} );
     rows.enter().append('tr');
     rows.exit().remove();
     d3.select ("#summary_matching").text (rows[0].length);
@@ -2395,4 +2423,5 @@ function plot_div_data (data, keys, labels, id, dim) {
       .text("Divergence from MRCA");
       
 }
+
 
