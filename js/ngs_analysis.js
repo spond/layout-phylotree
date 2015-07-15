@@ -156,6 +156,7 @@ function load_analysis_results (dir_info, document_title, ignore_replicate_for_i
     loadDRM ([['/js/DRM/Scores_PI.txt', 'PR', 'PI'],
           ['/js/DRM/Scores_NRTI.txt', 'RT', 'NRTI'],
           ['/js/DRM/Scores_NNRTI.txt', 'RT', 'NNRTI']], dir_info);
+          
 }
 
 function diff_host_gene (r1, r2, cols) {
@@ -734,7 +735,7 @@ function set_button_handlers  () {
 
     $('#view_intrahost').on ('click', function (event) {
         toggle_tab_highlight ("#view_intrahost");
-        column_names_for_global_filter = null;
+        column_names_for_global_filter = intrahost_table_columns;
         function_for_global_filter = draw_intrahost_table;
         data_for_global_filter = intrahost_data;
         function_for_global_filter (data_for_global_filter);
@@ -911,9 +912,8 @@ function main_loader (dir_info) {
                             .text ('Compartmentalization');
         }
         
-        function_for_global_filter = draw_intrahost_table;
-        data_for_global_filter = intrahost_data;
         set_button_handlers ();
+        $('#view_intrahost').click();
         $("#loading_bar").hide(0);
         $("#nav_bar").show (0);
     });
