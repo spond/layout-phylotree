@@ -1,0 +1,408 @@
+<body>
+
+<div class="progress progress-striped active" id = "loading_bar">
+  <div class="progress-bar"  role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">
+    Loading env evolution data
+  </div>
+</div>
+
+<div class = 'container' id = 'allofit' style = 'display: none'>    
+   <ul class="nav nav-tabs">
+      <li><a href="#evo" data-toggle="tab">Evolutionary trajectory</a></li>
+      <li><a href="#pos" data-toggle="tab">Gene-wide information</a></li>
+      <li><a href="#seq" data-toggle="tab">Amino-acid sequences</a></li>
+      <li><a href="#trees" data-toggle="tab">Trees</a></li>
+      <li><a href="#neutralization" data-toggle="tab">Neutralization</a></li>
+    </ul>
+    
+    <div id="myTabContent" class="tab-content">
+        <div class="tab-pane fade in active" id="evo">
+           <div class = 'row'>
+               <div class = 'col-md-12'>
+                    <div class="form-inline">
+                      <div class="form-group">
+                        <label for="_evo_regions">Region(s) to plot</label>
+                      </div>
+                      <div class="form-group">
+                         <select id = '_evo_regions' multiple = "multiple"></select>
+                      </div>
+                      
+                      <div class="form-group">
+                        <label for="_evo_metrics">Evolutionary metrics</label>
+                      </div>
+                      <div class="form-group">
+                         <select id = '_evo_metrics' multiple = "multiple"></select>
+                      </div>
+
+                      <div class="form-group">
+                        <label for="_evo_pheno">Phenotype metrics</label>
+                      </div>
+                      <div class="form-group">
+                         <select id = '_evo_pheno' multiple = "multiple"></select>
+                      </div>
+                      
+
+                       <div class="form-group">
+                            <button class="btn btn-primary disabled btn-sm" id = "_evo_plotme" 
+                            data-complete-text="Display"
+                            data-loading-text="Loading...">
+                            </button>
+                       </div>        
+                    </div>                    
+                       <!--
+                      <span class="input-group-addon">
+                            Phenotype 1
+                      </span>
+                      <select id = '_evo_pheno1' class="form-control input-sm"></select>
+                      <span class="input-group-addon">
+                            Phenotype 2
+                      </span>
+                      <select id = '_evo_pheno2' class="form-control input-sm"></select>
+                       -->              
+                       
+
+               </div>
+           </div>
+           <div class = 'row'>
+               <div class = 'col-md-12'>           
+                    <svg id = '_evo_main_plot'/>
+                </div>
+           </div>        
+           <div class = 'row'>
+               <div class = 'col-md-12'>           
+                    <svg id = '_evo_secondary_plot'/>
+                </div>
+           </div>        
+        </div>        
+        <div class="tab-pane fade" id="pos">
+            <div class = "row">
+                <div class = "col-md-12">
+                   <div class="alert alert-info" role = "alert">
+                      <button type="button" class="close" data-dismiss="alert"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                       You can zoom in on a region by clicking and dragging in the 'Combined' plot. 
+                        This will also show site-by-site residue frequency over time in separate plots.
+                    </div>
+                    <div class="input-group input-group-sm">
+                      <span class="input-group-addon">
+                            Show this many site-level plots
+                      </span>
+                  
+                      <select class="form-control" id = '_pos_sites_to_show'>
+                          <option>2</option>
+                          <option>3</option>
+                          <option selected>4</option>
+                          <option>5</option>
+                          <option>6</option>
+                          <option>7</option>
+                          <option>8</option>
+                      </select>
+                      <span class="input-group-addon">
+                            Use entropy
+                            <input type="checkbox" id = '_pos_entropy'/>
+                      </span>
+                      <span class="input-group-addon">
+                            Database conservation
+                            <input type="checkbox" id = '_pos_conservation'/>
+                      </span>
+                      <span class="input-group-addon">
+                            Subtype for conservation
+                      </span>
+                  
+                      <select class="form-control" id = '_subtype_for_conservation'>
+
+                      </select>
+                      <span class="input-group-addon">
+                            Mark positively selected sites
+                            <input type="checkbox" id = '_pos_selected' checked/>
+                      </span>
+                    </div>    
+                </div>           
+            </div>
+            <div class = "row">
+                <div class = "col-md-9">
+                     <svg id = '_pos_main_plot'/>
+                 </div>
+                <div class = "col-md-3">
+                    <svg id = '_pos_secondary_plot'/>
+                </div>
+            </div>
+        </div>
+        <div class="tab-pane fade" id="seq">
+          <div class="panel-group" id="accordion">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                  <h5 class="panel-title">
+                    <a data-toggle="collapse" data-parent="#accordion" href="#_select_aa_display">
+                      Select Sequences
+                    </a>
+                  </h5>
+                </div>    
+                      
+                <div id="_select_aa_display" class="panel-collapse collapse">
+                      <div class="panel-body">
+                        <div class = "row">
+                            <div class = 'col-md-9'>
+                                <div class="input-group input-group-sm">
+                                <span class="input-group-addon"><span class = "glyphicon glyphicon-filter"></span>Filter</span>
+                                  <input type="text" id = '_seq_select_limiter' class="form-control" placeholder="Type text to match, e.g. 161994,161997, env" >
+                                </div>
+                            </div>
+                            <div class = 'col-md-3'>
+                                <span class="badge" id = "_seq_matching_count"></span>.
+                            </div>
+
+                        </div>
+
+                        <div class = "row">
+
+                            <div class = "col-md-12">
+                                <table class="table table-hover table-condensed">
+                                    <thead>
+                                        <tr>
+                                            <td class = 'seq-date'>Sequence ID</td>
+                                            <td class = 'seq-date'>Date</td>
+                                            <td class = 'seq-date'>Selected
+                                            <button type = 'button' class = 'btn btn-primary btn-xs' id = '_seq_select_all'>
+                                            Toggle all
+                                            </button>
+                                            </td>
+                                        </tr>
+                                    </thead>
+                                    <tbody id = '_seq_select_table'>
+                                        
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                      </div>
+                </div>
+            </div>
+                
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                  <h5 class="panel-title">
+                    <a data-toggle="collapse" data-parent="#accordion" href="#_main_aa_display">
+                      Display Sequences <span class = 'badge' id = '_seq_selected_count'></span>
+                    </a>
+                  </h5>
+                </div>
+                
+                <div id="_main_aa_display" class="panel-collapse collapse in">
+                    <div class="panel-body">
+                        <div class = "row">
+                            <div class = "col-md-12">
+                                   <div class="alert alert-info" role = "alert">
+                                        <button type="button" class="close" data-dismiss="alert"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                                        You can display the amino-acid sequences of clones, grouped by time, 
+                                        and restricted to a particular HXB2 coordinate range. Sites matching
+                                        the most frequent earliest timepoint clone are shown as '.', and 
+                                        potential N-linked glycosylation sites are displayed with shaded backgrounds.
+                                        Click on the count of clones matching a particular subsequence to display the list of clone IDs.
+                                        Hover over a particular coordinate to show its evolution over time in a separate plot.
+                                     </div>
+                                    <div class="input-group input-group-sm">
+                                          <div class="input-group-btn">
+                                            <button type="button" class="btn btn-default btn-sm" id = "_sequence_left5" title = "Left 5">
+                                                <i class="fa fa-fast-backward" ></i>
+                                            </button>
+                                          </div>
+                                          <div class="input-group-btn">
+                                            <button type="button" class="btn btn-default btn-sm" id = "_sequence_left1" title = "Left 1">
+                                                <i class="fa fa-backward" ></i>
+                                            </button>
+                                          </div>
+                                          <span class="input-group-addon">From</span>
+                                          <input type="text" class="form-control" id = '_seq_from' placeholder="HXB2 coordinate (e.g. 160)" value = "160">
+                                          <span class="input-group-addon">To</span>
+                                          
+                                          <input type="text" class="form-control" id = '_seq_to' placeholder="HXB2 coordinate (e.g. 200)" value = "200">
+                                           <div class="input-group-btn">
+                                            <button type="button" class="btn btn-default btn-sm" id = "_sequence_right1" title = "Right 1">
+                                                <i class="fa fa-forward" ></i>
+                                            </button>
+                                          </div>
+                                          <div class="input-group-btn">
+                                            <button type="button" class="btn btn-default btn-sm" id = "_sequence_right5" title = "Right 5">
+                                                <i class="fa fa-fast-forward" ></i>
+                                            </button>
+                                          </div>
+                                           <div class="input-group-btn">
+                                            <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">Predefined 
+                                            <span class="caret"></span></button>
+                                            <ul class="dropdown-menu">
+                                              <li><a href="#" class = '_seq_predef' data-range = '131,156'>V1</a></li>
+                                              <li><a href="#" class = '_seq_predef' data-range = '157,196'>V2</a></li>
+                                              <li><a href="#" class = '_seq_predef' data-range = '296,330'>V3</a></li>
+                                              <li><a href="#" class = '_seq_predef' data-range = '385,418'>V4</a></li>
+                                              <li><a href="#" class = '_seq_predef' data-range = '461,471'>V5</a></li>
+                                              <li><a href="#" class = '_seq_predef' data-range = '662,683'>MPER</a></li>
+                                           </ul>
+                                          </div>
+                                          <span class="input-group-addon">
+                                            Mark positively selected sites
+                                            <input type="checkbox" id = '_seq_selected' checked />
+                                          </span>
+                                          <span class="input-group-btn">
+                                              <button class="btn btn-primary btn-sm" id = "_seq_display">
+                                              Display
+                                              </button>                    
+                                          </span>
+                                    </div>    
+                                </div>
+                        </div>
+                     <div class = 'row'>
+                        <div class = 'col-md-9'>
+                            <table class="table table-hover table-condensed">
+                            <thead>
+                                <tr>
+                                    <td class = 'seq-date'>HXB2 coord.</td>
+                                    <td id = '_seq_coordinates' class = 'seq-date'></td>
+                                </tr>
+                            </thead>
+                            <tbody id = '_seq_positional_table'>
+                    
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class = "col-md-3">
+                            <div class = 'row'>
+                                <svg id = '_seq_secondary_plot'/>
+                            </div>
+                            <div class = 'row' id = '_site_subtype_conservation_div' style = 'display: none'>
+                                <div class = 'row '>
+                                      <div class = 'col-md-3'>
+                                          <div class="form-inline">
+                                              <div class="form-group">
+                                                <label>
+                                                    Subtype
+                                                </label>
+                                              </div>
+
+                                              <div class="form-group">
+                                                 <select id = '_site_subtype_for_conservation'></select>
+                                              </div>           
+                                          </div>
+                                       </div>                                               
+                                </div>
+                                <div class = 'row'>
+                                    <svg id = '_seq_tertiary_plot'/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    </div>
+                </div>    
+            </div>       
+          </div>
+        </div>
+
+ 
+         <div class="tab-pane fade" id="trees">
+ 			<div class = "row">
+                <div class = "col-md-12">
+                      <div class="input-group input-group-sm">
+                      <span class="input-group-addon">
+                        	Genomic region
+                      </span>
+                  
+                      <select class="form-control" id = '_tree_regions_selector'>
+                          
+                      </select>
+                      
+					  <span class="input-group-addon">
+                        	Time point
+                      </span>
+                  
+                      <select class="form-control" id = '_tree_time_point_selector'>
+                          
+                      </select>
+
+					  <span class="input-group-addon">
+                        	Distance measure
+                      </span>
+                  
+                      <select class="form-control" id = '_tree_scale_point_selector'>
+                          
+                      </select>
+
+                      <span class="input-group-addon" title = "Perform live updates of the tree when the region selected in the sequence panel changes">
+                            Link to selected region
+                            <input type="checkbox" checked id = '_link_to_sequences'/ >
+                      </span>
+
+                      <span class="input-group-addon">
+                            Show clone names
+                            <input type="checkbox" id = '_tree_show_clone_names'/>
+                      </span>
+                      
+                      <!-- <span class="input-group-addon">
+                            Database conservation
+                            <input type="checkbox" id = '_pos_conservation'/>
+                      </span>
+                      <span class="input-group-addon">
+                            Subtype for conservation
+                      </span>
+                  
+                      <select class="form-control" id = '_subtype_for_conservation'>
+
+                      </select>
+                      <span class="input-group-addon">
+                            Mark positively selected sites
+                            <input type="checkbox" id = '_pos_selected' checked/>
+                      </span>
+                      -->
+                    </div>    
+                </div>           
+            </div>
+            
+            <div class = 'row'>
+                <div class = 'col-md-12'>
+                    <div class="btn-toolbar" role="toolbar">
+                      <div class="btn-group">
+                            <button type="button" class="btn btn-default btn-sm" id = "expand_spacing" title = "Expand spacing">
+                                <i class="fa fa-expand" ></i>
+                            </button>
+                             <button type="button" class="btn btn-default btn-sm" id = "compress_spacing" title = "Compress spacing">
+                                <i class="fa fa-compress" ></i>
+                            </button>
+                             <button type="button" class="btn btn-default btn-sm" id = "sort_ascending" title = "Sort deepest clades to the bototm">
+                                <i class="fa fa-sort-amount-asc" ></i>
+                            </button>
+                             <button type="button" class="btn btn-default btn-sm" id = "sort_descending" title = "Sort deepsest clades to the top">
+                                <i class="fa fa-sort-amount-desc" ></i>
+                            </button>
+                             <button type="button" class="btn btn-default btn-sm" id = "sort_original" title = "Restore original order">
+                                <i class="fa fa-sort" ></i>
+                            </button>
+                      </div>
+                   </div>
+                </div>
+            </div>
+                
+             <div class = 'row'>
+                <div class = 'col-md-12' id = '_tree_enclosure'>
+                    
+                </div>
+            </div>
+            
+        </div>
+
+        <div class="tab-pane fade" id="neutralization">
+             <div class = 'row'>
+                <div class = 'col-md-12'>
+                    <table class="table table-hover table-condensed">
+                        <thead>
+                            <tr id = '_nab_table_head'>
+                            
+                            </tr>
+                        </thead>
+                        <tbody id = '_nab_table_body'>
+        
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+</div>  
+</body>
