@@ -169,9 +169,9 @@ function load_analysis_results(dir_info, document_title, ignore_replicate_for_in
     }
 
     loadDRM([
-        ['/js/DRM/Scores_PI.txt', 'PR', 'PI'],
-        ['/js/DRM/Scores_NRTI.txt', 'RT', 'NRTI'],
-        ['/js/DRM/Scores_NNRTI.txt', 'RT', 'NNRTI']
+        ['//spond.github.io/layout-phylotree/data/DRM/Scores_PI.txt', 'PR', 'PI'],
+        ['//spond.github.io/layout-phylotree/data/DRM/Scores_NRTI.txt', 'RT', 'NRTI'],
+        ['//spond.github.io/layout-phylotree/data/DRM/Scores_NNRTI.txt', 'RT', 'NNRTI']
     ], dir_info);
 
 }
