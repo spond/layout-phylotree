@@ -909,7 +909,7 @@ function show_summary_popup(d) {
 }
 
 function main_loader(dir_info) {
-    d3.json(dir_info, function(error, json) {
+    d3.json(dir_info[0], function(error, json) {
         available_run_data = json;
 
         if ('settings' in json) {
@@ -920,6 +920,7 @@ function main_loader(dir_info) {
         var dram_info_from = [];
         for (k = 0; k < json['data'].length; k++) {
             var this_record = json['data'][k];
+            this_record[this_record.length - 1] = dir_info[1] + this_record[this_record.length - 1];
             directory_to_data[this_record[this_record.length - 1]] = this_record;
             unique_file_names.push(this_record[this_record.length - 1]);
             var dram_data_available = has_dram_relevant_genes(this_record[2]);
