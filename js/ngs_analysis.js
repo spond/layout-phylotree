@@ -696,6 +696,11 @@ function make_intrahost_table(json, compartments, replicates) {
     draw_intrahost_table(intrahost_data);
 }
 
+function correct_index_main_table (index) {
+    if (!has_compartment) index--;
+    if (!has_replicate) index--;
+    return index;
+}
 
 function set_button_handlers() {
     $('body').on('click', '#back_to_summary', function(event) {
@@ -728,12 +733,15 @@ function set_button_handlers() {
 
         /*loadConsensusSequences (unique_file_names.map (function (d) {return d;}), sequences);*/
 
+        var consensus_index = correct_index_main_table (5);
+
         var export_sequences = visible_run_data.filter(function(d) {
-                return d[5] && 'consensus' in d[5] && d[5]['consensus'];
+               return d[consensus_index] && 'consensus' in d[consensus_index] && d[consensus_index]['consensus'];
             }).map(function(d) {
-                return [make_patient_label_consensus(d, has_compartment, has_replicate), d[5]['consensus']];
+                return [make_patient_label_consensus(d, has_compartment, has_replicate), d[consensus_index]['consensus']];
             }),
             s_count = export_sequences.length;
+
 
         export_sequences = encodeURIComponent(export_sequences.map(function(d) {
             return ">" + d[0] + "\n" + d[1] + "\n";
