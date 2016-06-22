@@ -161,6 +161,12 @@ function check_compartmentalization(pid, date, gene, compartment) {
     return null;
 }
 
+function correct_index_main_table (index) {
+    if (!has_compartment) index--;
+    if (!has_replicate) index--;
+    return index;
+}
+
 function load_analysis_results(dir_info, document_title, ignore_replicate_for_intrahost) {
 
     d3.select("#document_title").text(document_title);
@@ -609,12 +615,12 @@ function make_intrahost_table(json, compartments, replicates) {
     }
 
     if (fst_data) {
-        /* 
+        /*
           IN:
-            id 
+            id
             date
-             gene 
-              array 
+             gene
+              array
                 [replicate, replicate, {
                                             "comp1",
                                             "comp2",
@@ -632,7 +638,7 @@ function make_intrahost_table(json, compartments, replicates) {
                     genes:        [gene1, gene2, ...]
                     comparisons:  [comp1, comp2, date, gene, f_st, p, replicate1, replicate2, histogram_data (object with 3 arrays)]
                 }
-            
+
         */
 
         rebinned = {};
@@ -696,11 +702,6 @@ function make_intrahost_table(json, compartments, replicates) {
     draw_intrahost_table(intrahost_data);
 }
 
-function correct_index_main_table (index) {
-    if (!has_compartment) index--;
-    if (!has_replicate) index--;
-    return index;
-}
 
 function set_button_handlers() {
     $('body').on('click', '#back_to_summary', function(event) {
@@ -741,7 +742,6 @@ function set_button_handlers() {
                 return [make_patient_label_consensus(d, has_compartment, has_replicate), d[consensus_index]['consensus']];
             }),
             s_count = export_sequences.length;
-
 
         export_sequences = encodeURIComponent(export_sequences.map(function(d) {
             return ">" + d[0] + "\n" + d[1] + "\n";
@@ -925,7 +925,7 @@ function main_loader(dir_info) {
             has_compartment = json['settings']['compartment'];
             has_replicate = json['settings']['replicate'];
         }
-    
+
         relative_path_prefix = dir_info[1];
 
         var dram_info_from = [];
@@ -1211,50 +1211,50 @@ function make_overall_table(json) {
 
     /*
     "pop-up": {
-     "contributing reads": 21372, 
-     "q20": 0.927647, 
-     "mean q-score": 34.4676, 
-     "q30": 0.768968, 
-     "total bases": 12341411, 
-     "original reads": 35124, 
-     "retained fragments": 21372, 
+     "contributing reads": 21372,
+     "q20": 0.927647,
+     "mean q-score": 34.4676,
+     "q30": 0.768968,
+     "total bases": 12341411,
+     "original reads": 35124,
+     "retained fragments": 21372,
      "retained fragment length distribution:": {
-      "median": 396, 
-      "mean": 334.622, 
-      "min": 50, 
-      "2.5%": 95, 
-      "standard deviation": 91.2781, 
-      "variance": 8331.69, 
-      "97.5%": 414, 
+      "median": 396,
+      "mean": 334.622,
+      "min": 50,
+      "2.5%": 95,
+      "standard deviation": 91.2781,
+      "variance": 8331.69,
+      "97.5%": 414,
       "max": 517
-     }, 
+     },
      "original read length distribution:": {
-      "median": 396, 
-      "mean": 351.367, 
-      "min": 28, 
-      "2.5%": 127, 
-      "standard deviation": 87.5007, 
-      "variance": 7656.36, 
-      "97.5%": 481, 
+      "median": 396,
+      "mean": 351.367,
+      "min": 28,
+      "2.5%": 127,
+      "standard deviation": 87.5007,
+      "variance": 7656.36,
+      "97.5%": 481,
       "max": 552
-     }, 
+     },
      "q10": 0.999991
-    }, 
+    },
     "text": "4374 (865)"
-    
+
     "pop-up": {
-     "IQR": "4579-4692", 
-     "mean": "4596.99", 
-     "range": "311-5199", 
+     "IQR": "4579-4692",
+     "mean": "4596.99",
+     "range": "311-5199",
      "median": 4606.0
-    }, 
+    },
 
 
     */
 
-    // 
+    //
 
-    var column_index = 7 - (has_compartment ? 0 : 1) - (has_replicate ? 0 : 1);
+    var column_index = correct_index_main_table(7);
     var ids = new Object,
         extract_keys = [
             ["contributing reads"],
@@ -1291,7 +1291,7 @@ function make_overall_table(json) {
         var clones = d[0]["text"].split(" ");
         //var coverages = d[1]["pop-up"]["IQR"].split("-");
 
-        var clusters = +clones[1].substr(1, clones[1].length - 2), 
+        var clusters = +clones[1].substr(1, clones[1].length - 2),
             reads = +clones[0];
 
         clone_metrics.push([reads, clusters , reads/clusters, +d[1]["text"]]);
