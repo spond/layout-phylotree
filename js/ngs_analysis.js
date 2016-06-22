@@ -18,6 +18,7 @@ var number_format = d3.format(".2g"),
 var popover_obj = null,
     popover_codon;
 var available_run_data;
+var relative_path_prefix = "";
 var directory_to_data = {};
 var parse_date = d3.time.format("%Y/%m/%d");
 
@@ -916,11 +917,13 @@ function main_loader(dir_info) {
             has_compartment = json['settings']['compartment'];
             has_replicate = json['settings']['replicate'];
         }
+    
+        relative_path_prefix = dir_info[1];
 
         var dram_info_from = [];
         for (k = 0; k < json['data'].length; k++) {
             var this_record = json['data'][k];
-            this_record[this_record.length - 1] = dir_info[1] + this_record[this_record.length - 1];
+            this_record[this_record.length - 1] = relative_path_prefix + this_record[this_record.length - 1];
             directory_to_data[this_record[this_record.length - 1]] = this_record;
             unique_file_names.push(this_record[this_record.length - 1]);
             var dram_data_available = has_dram_relevant_genes(this_record[2]);
@@ -1439,7 +1442,7 @@ function make_overall_table(json) {
                     }
                     if ('link' in d) {
                         var dl_button = this_obj.insert("a", ":first-child").attr("class", "btn btn-primary btn-xs").style('display', 'inline-block').style('margin-right', '0.2em')
-                            .attr("href", d['link']).attr("download", 'target' in d ? d['target'] : 'region.fas')
+                            .attr("href", relative_path_prefix + d['link']).attr("download", 'target' in d ? d['target'] : 'region.fas')
                             .attr("target", "_blank");
 
 
